@@ -1,0 +1,29 @@
+apiVersion: shipwright.io/v1beta1
+kind: Build
+metadata:
+  name: slurm-operator
+  namespace: rtc-builds
+spec:
+  output:
+    annotations:
+      org.opencontainers.image.source: 'https://github.com/NYU-RTS/slurm-operator'
+      org.opencontainers.image.url: 'https://registry.cloud.rt.nyu.edu/repository/nyu-rts/slurm-operator'
+    image: registry.cloud.rt.nyu.edu/nyu-rts/slurm-operator
+    labels:
+      description: Slurm Kubernetes Operator
+      maintainer: hsys@nyu.edu
+    pushSecret: rtc-registry-secret
+  paramValues:
+    - name: dockerfile
+      value: 'Dockerfile'
+    - name: target
+      value: 'manager'
+  source:
+    git:
+      cloneSecret: github-rtc-builds
+      revision: nyu-main
+      url: 'https://github.com/NYU-RTS/slurm-operator.git'
+    type: Git
+  strategy:
+    kind: ClusterBuildStrategy
+    name: buildah
