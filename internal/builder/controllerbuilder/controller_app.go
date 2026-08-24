@@ -174,12 +174,6 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 				initContainers = append(initContainers, b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath))
 				return initContainers
 			}(),
-			SecurityContext: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(true),
-				RunAsUser:    ptr.To(common.SlurmUserUid),
-				RunAsGroup:   ptr.To(common.SlurmUserGid),
-				FSGroup:      ptr.To(common.SlurmUserGid),
-			},
 			Volumes: controllerVolumes(controller, extraConfigMapNames),
 		},
 		Merge: template.PodSpec,
@@ -334,11 +328,6 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 				},
 				FailureThreshold: 6,
 				PeriodSeconds:    10,
-			},
-			SecurityContext: &corev1.SecurityContext{
-				RunAsNonRoot: ptr.To(true),
-				RunAsUser:    ptr.To(common.SlurmUserUid),
-				RunAsGroup:   ptr.To(common.SlurmUserGid),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
