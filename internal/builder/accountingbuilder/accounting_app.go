@@ -97,6 +97,12 @@ func (b *AccountingBuilder) accountingPodTemplate(accounting *slinkyv1beta1.Acco
 			Containers: []corev1.Container{
 				b.slurmdbdContainer(spec.Slurmdbd.Container),
 			},
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(true),
+				RunAsUser:    ptr.To(common.SlurmUserUid),
+				RunAsGroup:   ptr.To(common.SlurmUserGid),
+				FSGroup:      ptr.To(common.SlurmUserGid),
+			},
 			Volumes: accountingVolumes(accounting),
 		},
 		Merge: template.PodSpec,
@@ -177,6 +183,11 @@ func (b *AccountingBuilder) slurmdbdContainer(merge corev1.Container) corev1.Con
 						Port: intstr.FromInt(common.SlurmdbdPort),
 					},
 				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				RunAsNonRoot: ptr.To(true),
+				RunAsUser:    ptr.To(common.SlurmUserUid),
+				RunAsGroup:   ptr.To(common.SlurmUserGid),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
