@@ -79,10 +79,7 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 		return err
 	}
 
-	if !nodeset.DeletionTimestamp.IsZero() {
-		logger.Info("NodeSet is being deleted, skipping sync")
-		return nil
-	} else {
+	if nodeset.DeletionTimestamp.IsZero() {
 		durationStore.Push(key, 30*time.Second)
 	}
 
@@ -671,7 +668,19 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 			default:
 				override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 				expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
-				if expected == defunctNode.Name {
+
+				// Kubernetes nodes that still exist but do not match the DaemonSet pod's NodeSelector
+				// should be deleted
+				selectorMatch := true
+				for key, value := range nodeset.Spec.Template.PodSpecWrapper.NodeSelector {
+					nodeValue, ok := kubeNode.Labels[key]
+					if !ok || nodeValue != value {
+						selectorMatch = false
+						break
+					}
+				}
+
+				if expected == defunctNode.Name && selectorMatch {
 					logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it")
 					return nil
 				}
@@ -1090,7 +1099,9 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 				r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingDownReason, "ScaleDown",
 					"Deleting %d daemon Pod(s)", len(podsToDelete))
 			}
-			return r.doPodScale(ctx, nodeset, podsNewScaling, podsToDelete, podsToCreate)
+			// Don't uncordon existing pods during scale; syncRollingUpdate may be
+			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, podsToDelete, podsToCreate)
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods in StatefulSet mode")
@@ -1122,14 +1133,20 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			logger.V(2).Info("Too few NodeSet pods", "need", replicaCount, "creating", diff)
 			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingUpReason, "ScaleUp",
 				"Creating %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
-			return r.doPodScale(ctx, nodeset, podsNewScaling, nil, podsToCreate)
+			// Don't uncordon existing pods during scale-up; syncRollingUpdate may be
+			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
 		}
 		if diff > 0 {
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
 			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingDownReason, "ScaleDown",
 				"Deleting %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
-			podsToDelete, podsToKeep := nodesetutils.SplitActivePods(podsNewScaling, diff)
-			return r.doPodScale(ctx, nodeset, podsToKeep, podsToDelete, nil)
+			podsToDelete, _ := nodesetutils.SplitActivePods(podsNewScaling, diff)
+			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
+			// cordoned pods for deletion, but if more pods are already cordoned/draining
+			// than diff can delete this reconcile, the overflow lands in the keep set;
+			// doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, podsToDelete, nil)
 		}
 	}
 
@@ -1797,7 +1814,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	_, oldPods := findUpdatedPods(pods, hash)
 
 	// Replace all unhealthy pods
-	unhealthyPods, healthyPods := nodesetutils.SplitUnhealthyPods(oldPods)
+	unhealthyPods, _ := nodesetutils.SplitUnhealthyPods(oldPods)
 	if len(unhealthyPods) > 0 {
 		logger.Info("Delete unhealthy pods for Scheduled Update",
 			"unhealthyPods", len(unhealthyPods))
@@ -1809,7 +1826,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	}
 
 	// If reservation is ongoing, handle updates
-	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, healthyPods, hash)
+	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
 
 	// Handle pod scale-down
 	if len(podsToDelete) > 0 {

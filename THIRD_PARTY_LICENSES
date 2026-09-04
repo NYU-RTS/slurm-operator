@@ -18,7 +18,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
-- Version: v1.1.0-rc1.0.20260814083532-fa489b21f028
+- Version: v1.1.0-rc1.0.20260901162108-a720d834e7da
 - License: Apache-2.0
 
 ### github.com/antlr4-go/antlr/v4
@@ -188,12 +188,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: Apache-2.0
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: BSD-3-Clause
 
 ### github.com/google/gnostic-models
@@ -356,11 +356,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.0.10
 - License: BSD-3-Clause
 
-### github.com/stoewer/go-strcase
-- Name: github.com/stoewer/go-strcase
-- Version: v1.3.1
-- License: MIT
-
 ### github.com/stretchr/testify
 - Name: github.com/stretchr/testify
 - Version: v1.11.1
@@ -478,7 +473,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/crypto
 - Name: golang.org/x/crypto
-- Version: v0.55.0
+- Version: v0.56.0
 - License: BSD-3-Clause
 
 ### golang.org/x/exp/slices
